@@ -5,6 +5,7 @@ QauntumOS is an experimental gaming-focused Linux distribution for x86_64 PCs an
 ## Initial design
 
 - Linux kernel; x86_64; glibc; custom init and service manager.
+- Pinned upstream Linux stable kernel: **7.2.8** (checked against kernel.org on 2026-10-02). The kernel is not yet built into an image.
 - Build the distribution's integration, system services, update mechanism, interface, and filesystem **layout** in this repository.
 - Start with established Linux filesystem drivers (for example ext4) and boot firmware interfaces. A new on-disk filesystem would be a separate research project and is not needed to own the OS design.
 - Keep the underlying desktop accessible. The controller interface is the default session, with an option to enter a normal desktop and terminal.
@@ -16,6 +17,8 @@ This is version 0: a static custom init that mounts the basic virtual filesystem
 ```sh
 make check
 ```
+
+To download the pinned kernel source and verify its upstream signature, run `make fetch-kernel`. This requires `curl`, `xz`, `gpg`, network access, and roughly 200 MB of free space. Downloads stay in the ignored `build/` directory. The command does not compile or install the kernel.
 
 See [the architecture](docs/architecture.md) and [the roadmap](docs/roadmap.md) for the build sequence.
 
