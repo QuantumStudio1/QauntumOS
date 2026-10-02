@@ -5,20 +5,24 @@ QauntumOS is an experimental gaming-focused Linux distribution for x86_64 PCs an
 ## Initial design
 
 - Linux kernel; x86_64; glibc; custom init and service manager.
-- Pinned upstream Linux stable kernel: **7.2.8** (checked against kernel.org on 2026-10-02). The kernel is not yet built into an image.
+- Pinned upstream Linux stable kernel: **7.2.8** (checked against kernel.org on 2026-10-02). The source is signature checked and built for the VM prototype.
 - Build the distribution's integration, system services, update mechanism, interface, and filesystem **layout** in this repository.
 - Start with established Linux filesystem drivers (for example ext4) and boot firmware interfaces. A new on-disk filesystem would be a separate research project and is not needed to own the OS design.
 - Keep the underlying desktop accessible. The controller interface is the default session, with an option to enter a normal desktop and terminal.
 
 ## Current state
 
-This is version 0: a static custom init that mounts the basic virtual filesystems and launches a recovery shell. It is **not yet a bootable distribution image**. The shell and remaining userspace will be supplied in the next version. The host build check verifies compilation, not boot behavior.
+**Version 1 boot prototype:** Linux 7.2.8 boots in QEMU into QauntumOS's custom init and recovery shell. The VM smoke test checks the running kernel version, shell response, and clean poweroff. A PC installer, disk image, graphical interface, and update command are still in development.
 
 ```sh
 make check
+make fetch-kernel
+make kernel
+make initramfs
+make test-vm
 ```
 
-To download the pinned kernel source and verify its upstream signature, run `make fetch-kernel`. This requires `curl`, `xz`, `gpg`, network access, and roughly 200 MB of free space. Downloads stay in the ignored `build/` directory. The command does not compile or install the kernel.
+To enter the VM interactively, run `make vm`. The recovery shell supports `help`, `version`, `uname`, `ls`, `cat`, `echo`, `reboot`, and `poweroff`. Build requirements include GCC with static glibc, make, Python 3, curl, xz, GnuPG, bc, flex, bison, and QEMU x86_64. The kernel source is downloaded and signature checked; generated files stay in the ignored `build/` directory. See [the build guide](docs/build.md).
 
 See [the architecture](docs/architecture.md) and [the roadmap](docs/roadmap.md) for the build sequence.
 
