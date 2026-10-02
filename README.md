@@ -1,4 +1,4 @@
-# QauntumOS
+
 
 QauntumOS is an experimental gaming-focused Linux distribution for x86_64 PCs and handhelds. The long-term goal is a controller-first interface with the freedom of a general-purpose PC. The name is spelled **QauntumOS** throughout this repository.
 
@@ -11,7 +11,7 @@ QauntumOS is an experimental gaming-focused Linux distribution for x86_64 PCs an
 
 ## Current state
 
-This is milestone 0: a static custom init that mounts the basic virtual filesystems and launches a recovery shell. It is **not yet a bootable distribution image**. The shell and remaining userspace will be supplied in the next milestone. The host build check verifies compilation, not boot behavior.
+This is version 0: a static custom init that mounts the basic virtual filesystems and launches a recovery shell. It is **not yet a bootable distribution image**. The shell and remaining userspace will be supplied in the next version. The host build check verifies compilation, not boot behavior.
 
 ```sh
 make check
