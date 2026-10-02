@@ -2,7 +2,7 @@
 
 ## Boot path
 
-UEFI firmware → bootloader → Linux kernel + initramfs → `qauntum-init` (PID 1) → services → graphical session. The first milestone uses a recovery shell; a service supervisor and login/session manager come next. Secure Boot support is later, after reproducible images and key management exist.
+UEFI firmware → bootloader → Linux kernel + initramfs → `qauntum-init` (PID 1) → services → graphical session. Version 0 uses a recovery shell; a service supervisor and login/session manager come next. Secure Boot support is later, after reproducible images and key management exist.
 
 ## System layout
 
