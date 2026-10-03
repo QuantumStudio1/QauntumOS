@@ -12,7 +12,7 @@ QauntumOS is an experimental gaming-focused Linux distribution for x86_64 PCs an
 
 ## Current state
 
-**Version 1 boot prototype:** Linux 7.2.8 boots in QEMU into QauntumOS's custom init and recovery shell. The VM smoke test checks the running kernel version, shell response, and clean poweroff. A PC installer, disk image, graphical interface, and update command are still in development.
+**Version 1 live ISO prototype:** Linux 7.2.8 boots from an ISO through BIOS or UEFI into QauntumOS's custom init and recovery shell. Both firmware paths passed a VM smoke test. This is a live recovery environment with no installer or persistent storage yet; the graphical interface and update command are also still in development.
 
 ```sh
 make check
@@ -20,9 +20,10 @@ make fetch-kernel
 make kernel
 make initramfs
 make test-vm
+make iso
 ```
 
-To enter the VM interactively, run `make vm`. The recovery shell supports `help`, `version`, `uname`, `ls`, `cat`, `echo`, `reboot`, and `poweroff`. Build requirements include GCC with static glibc, make, Python 3, curl, xz, GnuPG, bc, flex, bison, and QEMU x86_64. The kernel source is downloaded and signature checked; generated files stay in the ignored `build/` directory. See [the build guide](docs/build.md).
+To enter the VM interactively, run `make vm`. The recovery shell supports `help`, `version`, `uname`, `ls`, `cat`, `echo`, `reboot`, and `poweroff`. The ISO is `build/QauntumOS-Version-1-x86_64.iso`. Build requirements include GCC with static glibc, make, Python 3, curl, xz, GnuPG, bc, flex, bison, Syslinux, GRUB, xorriso, and QEMU x86_64. The kernel source is downloaded and signature checked; generated files stay in the ignored `build/` directory. See [the build guide](docs/build.md).
 
 See [the architecture](docs/architecture.md) and [the roadmap](docs/roadmap.md) for the build sequence.
 
