@@ -2,7 +2,7 @@
 
 ## Boot path
 
-The current VM prototype boots Linux 7.2.8 and an initramfs directly through QEMU, then starts `qauntum-init` (PID 1) and the recovery shell. The intended PC path is UEFI firmware → bootloader → Linux kernel + initramfs → `qauntum-init` → services → graphical session. A service supervisor and login/session manager come next. Secure Boot support follows reproducible images and key management.
+The current live ISO boots Linux 7.2.8 and an initramfs through ISOLINUX on BIOS or GRUB on UEFI, then starts `qauntum-init` (PID 1) and the recovery shell. The intended installed PC path is UEFI firmware → bootloader → Linux kernel + initramfs → `qauntum-init` → services → graphical session. A service supervisor and login/session manager come next. Secure Boot support follows reproducible images and key management.
 
 ## System layout
 
