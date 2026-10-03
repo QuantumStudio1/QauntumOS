@@ -10,8 +10,21 @@ import time
 
 
 REPO = Path(__file__).resolve().parents[1]
+iso = os.environ.get("QAUNTUM_ISO")
+if iso:
+    command = [
+        os.environ.get("QAUNTUM_QEMU", "qemu-system-x86_64"),
+        "-m", "1024", "-smp", "2", "-display", "none", "-monitor", "none",
+        "-serial", "stdio", "-cdrom", iso, "-boot", "d", "-no-reboot",
+    ]
+    if os.environ.get("QAUNTUM_QEMU_SHARE"):
+        command[1:1] = ["-L", os.environ["QAUNTUM_QEMU_SHARE"]]
+    if os.environ.get("QAUNTUM_OVMF_CODE"):
+        command += ["-drive", f"if=pflash,format=raw,readonly=on,file={os.environ['QAUNTUM_OVMF_CODE']}"]
+else:
+    command = ["bash", str(REPO / "tools/run-vm.sh"), "-no-reboot"]
 proc = subprocess.Popen(
-    ["bash", str(REPO / "tools/run-vm.sh"), "-no-reboot"],
+    command,
     cwd=REPO,
     stdin=subprocess.PIPE,
     stdout=subprocess.PIPE,
