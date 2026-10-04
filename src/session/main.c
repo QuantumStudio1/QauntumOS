@@ -21,10 +21,13 @@
 #define NAV_UP 0x103
 #define NAV_DOWN 0x104
 #define SELECT 0x105
+#define SWITCH_MODE 0x106
 
 static int inputs[MAX_INPUTS];
+static char input_paths[MAX_INPUTS][128];
 static size_t input_count;
 static int shift_pressed;
+static int desktop_mode;
 
 static void scan_inputs(void) {
     DIR *dir = opendir("/dev/input");
@@ -34,8 +37,15 @@ static void scan_inputs(void) {
         if (strncmp(entry->d_name, "event", 5) != 0) continue;
         char path[128];
         if (snprintf(path, sizeof(path), "/dev/input/%s", entry->d_name) >= (int)sizeof(path)) continue;
+        int known = 0;
+        for (size_t i = 0; i < input_count; ++i)
+            if (strcmp(input_paths[i], path) == 0) known = 1;
+        if (known) continue;
         int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
-        if (fd >= 0) inputs[input_count++] = fd;
+        if (fd >= 0) {
+            strcpy(input_paths[input_count], path);
+            inputs[input_count++] = fd;
+        }
     }
     closedir(dir);
 }
@@ -61,6 +71,7 @@ static int event_char(unsigned code) {
     if (code == KEY_RIGHT || code == BTN_DPAD_RIGHT) return NAV_RIGHT;
     if (code == KEY_UP || code == BTN_DPAD_UP) return NAV_UP;
     if (code == KEY_DOWN || code == BTN_DPAD_DOWN) return NAV_DOWN;
+    if (code == KEY_TAB || code == BTN_TL || code == BTN_TR) return SWITCH_MODE;
     if (code == KEY_ENTER || code == KEY_KPENTER || code == BTN_START) return '\n';
     if (code == BTN_SOUTH) return SELECT;
     if (code == KEY_BACKSPACE || code == BTN_EAST) return '\b';
@@ -69,19 +80,31 @@ static int event_char(unsigned code) {
 
 static int next_char(void) {
     struct pollfd fds[MAX_INPUTS + 1];
-    fds[0] = (struct pollfd){.fd = STDIN_FILENO, .events = POLLIN};
-    for (size_t i = 0; i < input_count; ++i)
-        fds[i + 1] = (struct pollfd){.fd = inputs[i], .events = POLLIN};
     for (;;) {
-        int ready = poll(fds, input_count + 1, -1);
+        scan_inputs();
+        fds[0] = (struct pollfd){.fd = STDIN_FILENO, .events = POLLIN};
+        for (size_t i = 0; i < input_count; ++i)
+            fds[i + 1] = (struct pollfd){.fd = inputs[i], .events = POLLIN};
+        int ready = poll(fds, input_count + 1, 1000);
         if (ready < 0) { if (errno == EINTR) continue; return -1; }
+        if (ready == 0) continue;
         if (fds[0].revents & POLLIN) {
             unsigned char c;
-            if (read(STDIN_FILENO, &c, 1) == 1) return c;
+            if (read(STDIN_FILENO, &c, 1) == 1)
+                return c == '\t' ? SWITCH_MODE : c;
             return -1;
         }
         if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) return -1;
         for (size_t i = 0; i < input_count; ++i) {
+            if (fds[i + 1].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+                close(inputs[i]);
+                for (size_t j = i + 1; j < input_count; ++j) {
+                    inputs[j - 1] = inputs[j];
+                    strcpy(input_paths[j - 1], input_paths[j]);
+                }
+                --input_count;
+                break;
+            }
             if (!(fds[i + 1].revents & POLLIN)) continue;
             struct input_event event;
             if (read(inputs[i], &event, sizeof(event)) != sizeof(event))
@@ -91,6 +114,10 @@ static int next_char(void) {
                 if (event.code == ABS_HAT0X && event.value > 0) return NAV_RIGHT;
                 if (event.code == ABS_HAT0Y && event.value < 0) return NAV_UP;
                 if (event.code == ABS_HAT0Y && event.value > 0) return NAV_DOWN;
+                if (event.code == ABS_X && event.value < -20000) return NAV_LEFT;
+                if (event.code == ABS_X && event.value > 20000) return NAV_RIGHT;
+                if (event.code == ABS_Y && event.value < -20000) return NAV_UP;
+                if (event.code == ABS_Y && event.value > 20000) return NAV_DOWN;
                 continue;
             }
             if (event.type != EV_KEY) continue;
@@ -121,7 +148,7 @@ static int read_field(const char *stage, const char *profile, const char *prompt
     size_t length = 0;
     int virtual_keyboard = strcmp(stage, "FIRST SETUP") == 0 ||
                            strcmp(stage, "LOCK SCREEN") == 0;
-    int home = strcmp(stage, "HOME") == 0;
+    int home = strcmp(stage, "HOME") == 0 || strcmp(stage, "DESKTOP") == 0;
     int selected = 0;
     printf("\033[2J\033[H\033[1;36m QAUNTUMOS  /  %s\033[0m\n\n", stage);
     if (profile && *profile) printf("  %s\n\n", profile);
@@ -134,6 +161,13 @@ static int read_field(const char *stage, const char *profile, const char *prompt
     for (;;) {
         int c = next_char();
         if (c < 0) break;
+        if (strcmp(stage, "LOCK SCREEN") == 0 && c == SWITCH_MODE) {
+            desktop_mode = !desktop_mode;
+            qa_ui_set_desktop(desktop_mode);
+            qa_ui_render(stage, profile, prompt, buffer, secret, message,
+                         virtual_keyboard, selected);
+            continue;
+        }
         if (virtual_keyboard && c >= NAV_LEFT && c <= NAV_DOWN) {
             int row = selected / 10, column = selected % 10;
             if (c == NAV_LEFT) column = (column + 9) % 10;
@@ -271,7 +305,8 @@ int main(int argc, char **argv) {
         lock_status = "PRESS START TO UNLOCK";
         printf("Unlocked profile %s.\n", name);
         for (;;) {
-            if (read_field("HOME", name, "1 GAMES 2 SETTINGS 3 ADD L LOCK P POWER",
+            if (read_field(desktop_mode ? "DESKTOP" : "HOME", name,
+                           "1 GAMES 2 SETTINGS 3 ADD L LOCK P POWER",
                            choice, sizeof(choice), 0, "CONTROLLER FIRST HOME PREVIEW") < 0) return 1;
             if (choice[0] == 'l' || choice[0] == 'L') break;
             if (choice[0] == 'p' || choice[0] == 'P') { sync(); reboot(RB_POWER_OFF); }

@@ -18,6 +18,9 @@ static unsigned char *pixels;
 static size_t pixels_size;
 static struct fb_fix_screeninfo fixed;
 static struct fb_var_screeninfo variable;
+static int desktop_mode;
+
+void qa_ui_set_desktop(int enabled) { desktop_mode = enabled != 0; }
 
 static void open_framebuffer(void) {
     if (fb_fd != -2) return;
@@ -138,30 +141,49 @@ void qa_ui_render(const char *stage, const char *profile, const char *prompt,
     if (!pixels) return;
     int w = (int)variable.xres, h = (int)variable.yres;
     for (int y = 0; y < h; ++y) {
-        unsigned char shade = (unsigned char)(18 + y * 16 / (h ? h : 1));
-        rectangle(0, y, w, 1, rgb(8, shade, (unsigned char)(35 + y * 18 / (h ? h : 1))));
+        unsigned char shade = (unsigned char)(12 + y * 22 / (h ? h : 1));
+        rectangle(0, y, w, 1, rgb(6, shade, (unsigned char)(29 + y * 29 / (h ? h : 1))));
     }
     int scale = w >= 1000 ? 4 : 3;
     int margin = w / 12;
-    disc(w - margin - 30, h / 5, h / 4, rgb(9, 48, 62));
-    disc(w - margin - 20, h / 5, h / 6, rgb(11, 61, 75));
-    rectangle(margin, h / 9, w - 2 * margin, 3, rgb(46, 219, 187));
-    draw_text(margin, h / 9 + 28, scale + 1, "QAUNTUMOS", rgb(239, 250, 250));
-    draw_text(margin, h / 9 + 80, 2, stage, rgb(58, 225, 190));
-
     int panel_y = h / 3;
-    rectangle(margin, panel_y, w - 2 * margin, h / 2, rgb(22, 38, 61));
-    rectangle(margin, panel_y, 6, h / 2, rgb(52, 224, 180));
+    /* Layered halos and bands remain legible without GPU acceleration. */
+    disc(w - margin - 80, h / 3, h / 3, rgb(14, 44, 79));
+    disc(w - margin - 60, h / 3, h / 4, rgb(14, 55, 92));
+    disc(w - margin - 45, h / 3, h / 6, rgb(18, 70, 100));
+    rectangle(0, 0, w, 5, rgb(61, 214, 219));
+    rectangle(margin, h / 9, 12, 54, rgb(64, 226, 214));
+    draw_text(margin + 30, h / 9 + 2, scale + 1, "QAUNTUMOS", rgb(246, 249, 255));
+    draw_text(margin + 30, h / 9 + 61, 2, stage, rgb(91, 223, 222));
+
+    rectangle(margin + 6, panel_y + 10, w - 2 * margin, h / 2, rgb(10, 29, 49));
+    rectangle(margin, panel_y, w - 2 * margin, h / 2, rgb(24, 42, 70));
+    rectangle(margin, panel_y, w - 2 * margin, 3, rgb(77, 122, 159));
+    rectangle(margin, panel_y, 5, h / 2, rgb(58, 219, 203));
     if (strcmp(stage, "LOCK SCREEN") == 0) {
-        int cx = w - margin - 110, cy = panel_y + 80;
-        disc(cx, cy, 52, rgb(42, 222, 186));
-        disc(cx, cy, 46, rgb(12, 68, 84));
+        int cx = w - margin - 100, cy = panel_y + 72;
+        disc(cx, cy, 51, rgb(50, 125, 171));
+        disc(cx, cy, 46, rgb(22, 67, 103));
+        disc(cx, cy, 40, rgb(29, 84, 115));
         char initial[2] = {(profile && *profile) ? profile[0] : 'Q', '\0'};
         draw_text(cx - 11, cy - 17, 5, initial, rgb(240, 255, 255));
+        int mode_y = panel_y + 69;
+        draw_text(margin + 36, mode_y, 2, "CHOOSE YOUR SPACE", rgb(158, 189, 216));
+        for (int i = 0; i < 2; ++i) {
+            int x = margin + 36 + i * 164;
+            int active = desktop_mode == i;
+            rectangle(x, mode_y + 28, 154, 43,
+                      active ? rgb(61, 219, 206) : rgb(12, 31, 52));
+            draw_text(x + 13, mode_y + 42, 2, i ? "DESKTOP" : "CONSOLE",
+                      active ? rgb(5, 27, 40) : rgb(195, 213, 230));
+        }
     }
-    draw_text(margin + 36, panel_y + 34, scale, profile, rgb(255, 255, 255));
-    draw_text(margin + 36, panel_y + 94, 2, prompt, rgb(185, 206, 224));
+    draw_text(margin + 36, panel_y + 25, scale, profile, rgb(255, 255, 255));
+    if (strcmp(stage, "LOCK SCREEN") != 0)
+        draw_text(margin + 36, panel_y + 94, 2, prompt, rgb(185, 206, 224));
+    else draw_text(margin + 36, panel_y + 122, 2, prompt, rgb(185, 206, 224));
     rectangle(margin + 36, panel_y + 145, w - 2 * margin - 72, 56, rgb(11, 25, 43));
+    rectangle(margin + 36, panel_y + 145, w - 2 * margin - 72, 2, rgb(73, 126, 155));
     if (masked) {
         char stars[65];
         size_t length = input ? strlen(input) : 0;
@@ -183,22 +205,33 @@ void qa_ui_render(const char *stage, const char *profile, const char *prompt,
             draw_text(x + 10, y + 4, 2, key,
                       i == selected ? rgb(2, 30, 42) : rgb(195, 215, 228));
         }
-    } else if (strcmp(stage, "HOME") == 0) {
+    } else if (strcmp(stage, "HOME") == 0 || strcmp(stage, "DESKTOP") == 0) {
+        int desktop = strcmp(stage, "DESKTOP") == 0;
+        if (desktop) {
+            rectangle(margin + 36, panel_y + 210, w - 2 * margin - 72, 83,
+                      rgb(10, 25, 43));
+            draw_text(margin + 50, panel_y + 215, 2,
+                      "DESKTOP WORKSPACE PREVIEW", rgb(96, 222, 217));
+        }
         static const char *cards[5] = {"GAMES", "SETTINGS", "ADD", "LOCK", "POWER"};
         int left = margin + 36;
         int cell_width = (w - 2 * margin - 72) / 5;
         for (int i = 0; i < 5; ++i) {
             int x = left + i * cell_width;
-            rectangle(x + 2, panel_y + 222, cell_width - 6, 64,
+            rectangle(x + 2, panel_y + (desktop ? 243 : 222), cell_width - 6,
+                      desktop ? 42 : 64,
                       i == selected ? rgb(45, 193, 169) : rgb(12, 28, 46));
-            draw_text(x + 12, panel_y + 244, 2, cards[i],
+            draw_text(x + 12, panel_y + (desktop ? 256 : 244), 2, cards[i],
                       i == selected ? rgb(2, 30, 42) : rgb(195, 215, 228));
         }
     }
     draw_text(margin + 36, panel_y + h / 2 - 50, 2, message, rgb(89, 230, 195));
     draw_text(margin, h - 55, 2,
+              strcmp(stage, "LOCK SCREEN") == 0 ?
+              "TAB OR BUMPER SWITCH  DPAD TYPE  START UNLOCK" :
               virtual_keyboard ? "DPAD MOVE  A TYPE  B DELETE  START OK" :
-              strcmp(stage, "HOME") == 0 ? "DPAD MOVE  A SELECT" :
+              strcmp(stage, "HOME") == 0 || strcmp(stage, "DESKTOP") == 0 ?
+              "DPAD MOVE  A SELECT" :
                                            "KEYBOARD ENTER TO CONTINUE",
               rgb(172, 194, 212));
 }
