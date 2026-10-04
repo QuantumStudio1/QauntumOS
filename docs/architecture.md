@@ -2,7 +2,11 @@
 
 ## Boot path
 
-The current live ISO boots Linux 7.2.8 and an initramfs through ISOLINUX on BIOS or GRUB on UEFI, then starts `qauntum-init` (PID 1) and the recovery shell. The intended installed PC path is UEFI firmware → bootloader → Linux kernel + initramfs → `qauntum-init` → services → graphical session. A service supervisor and login/session manager come next. Secure Boot support follows reproducible images and key management.
+The development build boots Linux 7.2.8 and an initramfs through ISOLINUX on BIOS or GRUB on UEFI, then starts `qauntum-init` (PID 1) and `qauntum-session`. The session presents profile creation on first boot, a graphical lock screen, and an early home screen. `qauntum.recovery=1` instead starts the recovery shell. The intended installed PC path is UEFI firmware → bootloader → Linux kernel + initramfs → `qauntum-init` → services → graphical session. A service supervisor and Unix user/session isolation come next. Secure Boot support follows reproducible images and key management.
+
+## Profiles and persistence
+
+Profiles are local records under `/var/lib/qauntumos/accounts`, with a random salt and PBKDF2-HMAC-SHA256 password hash. This is a prototype profile gate, not a Linux user account or a security boundary. On the live image the directory is in RAM and disappears at reboot. If the kernel command line explicitly supplies `qauntum.data=/dev/<partition>`, init mounts that ext4 partition at `/var/lib/qauntumos` and profiles persist. It never automatically mounts an unknown disk. A future installer will create and configure the data partition.
 
 ## System layout
 
@@ -10,7 +14,7 @@ Use a read-only system image for `/usr`, persistent `/var` for logs and package 
 
 ## Controller-first interface
 
-The default session should support controller navigation, a game library, launcher, storefront links, settings, downloads, performance overlay, sleep/resume, and accessibility. The interface should also work with keyboard, mouse, and touch. Users can open a regular desktop and install software outside the game library. Prototype the shell as a Wayland client on an existing compositor before deciding whether a custom compositor is justified.
+The development lock screen draws directly to the Linux framebuffer and accepts keyboard or controller events. Its on screen keyboard supports D-pad movement, A to type, B to delete, and Start to confirm. The home screen is currently a placeholder. The target session should support controller navigation, a game library, launcher, storefront links, settings, downloads, performance overlay, sleep/resume, and accessibility. It should also work with keyboard, mouse, and touch. Users can open a regular desktop and install software outside the game library. Move the prototype shell to Wayland on an existing compositor before deciding whether a custom compositor is justified.
 
 ## Games and graphics
 
