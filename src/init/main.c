@@ -35,6 +35,24 @@ static void open_console(void) {
     if (fd > 2) close(fd);
 }
 
+static void read_boot_options(int *recovery, char *data_device, size_t capacity) {
+    FILE *file = fopen("/proc/cmdline", "r");
+    if (!file) return;
+    char line[4096];
+    if (fgets(line, sizeof(line), file)) {
+        char *save = NULL;
+        for (char *token = strtok_r(line, " \t\n", &save); token;
+             token = strtok_r(NULL, " \t\n", &save)) {
+            if (strcmp(token, "qauntum.recovery=1") == 0) *recovery = 1;
+            if (strncmp(token, "qauntum.data=", 13) == 0 &&
+                strncmp(token + 13, "/dev/", 5) == 0 &&
+                strlen(token + 13) < capacity)
+                strcpy(data_device, token + 13);
+        }
+    }
+    fclose(file);
+}
+
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "--check") == 0) {
         puts("qauntum-init build check OK");
@@ -49,14 +67,28 @@ int main(int argc, char **argv) {
     open_console();
     (void)mount_system("proc", "/proc", "proc");
     (void)mount_system("sysfs", "/sys", "sysfs");
-    log_message("booted; starting recovery shell");
+    int recovery = 0;
+    char data_device[128] = {0};
+    read_boot_options(&recovery, data_device, sizeof(data_device));
+    if (data_device[0]) {
+        if (mount(data_device, "/var/lib/qauntumos", "ext4",
+                  MS_NODEV | MS_NOSUID | MS_NOEXEC, NULL) == 0) {
+            (void)mkdir("/var/lib/qauntumos/accounts", 0700);
+            (void)setenv("QAUNTUM_PERSISTENT", "1", 1);
+            log_message("persistent account data mounted");
+        } else dprintf(STDERR_FILENO, "qauntum-init: data disk %s: %s\n",
+                       data_device, strerror(errno));
+    } else log_message("live account data is temporary");
+    log_message(recovery ? "booted; starting recovery shell" :
+                           "booted; starting account and lock screen");
 
     for (;;) {
         pid_t child = fork();
         if (child == 0) {
             (void)setsid();
-            execl("/bin/sh", "sh", (char *)NULL);
-            dprintf(STDERR_FILENO, "qauntum-init: /bin/sh: %s\n", strerror(errno));
+            const char *program = recovery ? "/bin/sh" : "/bin/qauntum-session";
+            execl(program, recovery ? "sh" : "qauntum-session", (char *)NULL);
+            dprintf(STDERR_FILENO, "qauntum-init: %s: %s\n", program, strerror(errno));
             _exit(127);
         }
         if (child < 0) {
@@ -68,7 +100,7 @@ int main(int argc, char **argv) {
         int status;
         while (waitpid(child, &status, 0) < 0 && errno == EINTR) {}
         while (waitpid(-1, &status, WNOHANG) > 0) {}
-        log_message("recovery shell exited; restarting in 2 seconds");
+        log_message("session exited; restarting in 2 seconds");
         sleep(2);
     }
 }
