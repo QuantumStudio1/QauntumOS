@@ -7,11 +7,13 @@ image="$repo_dir/build/qauntumos-initramfs.cpio.gz"
 
 rm -rf -- "$root"
 mkdir -p "$root/bin" "$root/dev" "$root/proc" "$root/sys" "$root/tmp" "$root/etc" \
-    "$root/var/lib/qauntumos/accounts"
+    "$root/var/lib/qauntumos/accounts" "$root/var/lib/qauntumos/games"
 install -m 0755 "$repo_dir/build/qauntum-init" "$root/init"
 install -m 0755 "$repo_dir/build/qauntum-shell" "$root/bin/sh"
 install -m 0755 "$repo_dir/build/qauntum-session" "$root/bin/qauntum-session"
+install -m 0755 "$repo_dir/build/qauntum-library" "$root/bin/qauntum-library"
 chmod 0700 "$root/var/lib/qauntumos/accounts"
+chmod 0700 "$root/var/lib/qauntumos/games"
 while IFS= read -r library; do
     cp -L --parents -- "$library" "$root"
 done < <(ldd "$repo_dir/build/qauntum-session" | \
