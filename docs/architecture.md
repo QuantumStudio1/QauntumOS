@@ -14,11 +14,15 @@ Use a read-only system image for `/usr`, persistent `/var` for logs and package 
 
 ## Controller-first interface
 
-The development lock screen draws directly to the Linux framebuffer and accepts keyboard or controller events. Its on screen keyboard supports D-pad movement, A to type, B to delete, and Start to confirm. The home screen is currently a placeholder. The target session should support controller navigation, a game library, launcher, storefront links, settings, downloads, performance overlay, sleep/resume, and accessibility. It should also work with keyboard, mouse, and touch. Users can open a regular desktop and install software outside the game library. Move the prototype shell to Wayland on an existing compositor before deciding whether a custom compositor is justified.
+The development lock screen draws directly to the Linux framebuffer and accepts keyboard or controller events. Before unlock, Tab or either controller bumper switches between Console and Desktop. Its on screen keyboard supports D-pad movement, A to type, B to delete, and Start to confirm. Device discovery repeats while the screen is open, so a newly connected controller can be used. The desktop choice currently opens a distinct workspace preview with the same limited cards as the console home; it is not yet a general purpose desktop or a display server. The target session should support controller navigation, a game library, launcher, storefront links, settings, downloads, performance overlay, sleep/resume, and accessibility. It should also work with keyboard, mouse, and touch. Move the prototype shell to Wayland on an existing compositor before deciding whether a custom compositor is justified.
 
 ## Games and graphics
 
-Build on upstream Linux graphics, Mesa, Vulkan, PipeWire, and existing game compatibility tools. The OS will own integration, defaults, and UX. Hardware testing must include AMD, Intel, and NVIDIA PCs plus representative handhelds; do not assume suspend, controllers, or GPU drivers behave identically.
+Build on upstream Linux graphics drivers rather than editing them to claim a different distro. The kernel should provide AMDGPU, i915/xe, Nouveau, and simpledrm as appropriate; package Mesa, libdrm, Vulkan loader and ICDs, firmware, and hardware discovery into the eventual root filesystem. NVIDIA's proprietary driver needs a separate redistributability and kernel compatibility decision. This framebuffer preview does not ship a working accelerated userspace graphics stack. The OS will own integration, defaults, and UX. Hardware testing must include AMD, Intel, and NVIDIA PCs plus representative handhelds; do not assume suspend, controllers, or GPU drivers behave identically.
+
+## Game library
+
+[Playnite](https://github.com/JosefNemec/Playnite) is a useful model for aggregating storefronts, local games, metadata, and a controller-friendly fullscreen view, but its released application uses Windows UI technology and cannot be made Linux native through a theme change. The current development image does not bundle Playnite or launch games yet. The planned QauntumOS library will implement Linux-native game discovery and launch, with optional Steam and other integrations, and preserve license attribution for any Playnite code actually reused. A future compatibility layer could run Windows Playnite separately, but it would not replace a native library or provide a reliable system login surface.
 
 ## Updates from GitHub
 
