@@ -7,7 +7,7 @@ stage="$build_dir/iso-root"
 host="$build_dir/host-tools/usr"
 kernel="$build_dir/kernel-out/arch/x86/boot/bzImage"
 initramfs="$build_dir/qauntumos-initramfs.cpio.gz"
-iso="$build_dir/QauntumOS-Version-1-x86_64.iso"
+iso="$build_dir/QauntumOS-Version-2-dev-x86_64.iso"
 
 for file in "$kernel" "$initramfs"; do
     [[ -s $file ]] || { echo "Missing $file; run make kernel initramfs" >&2; exit 1; }
@@ -45,15 +45,23 @@ DEFAULT qauntumos
 LABEL qauntumos
   LINUX /boot/vmlinuz
   INITRD /boot/initramfs.cpio.gz
-  APPEND rdinit=/init console=tty0 console=ttyS0 loglevel=4
+  APPEND rdinit=/init console=tty0 console=ttyS0 loglevel=4 vga=791
+LABEL recovery
+  LINUX /boot/vmlinuz
+  INITRD /boot/initramfs.cpio.gz
+  APPEND rdinit=/init console=tty0 console=ttyS0 loglevel=4 vga=791 qauntum.recovery=1
 EOF
 
 cat > "$build_dir/grub-iso.cfg" <<'EOF'
 set timeout=3
 set default=0
-search --no-floppy --set=root --label QAUNTUMOS_V1
-menuentry "QauntumOS Version 1" {
+search --no-floppy --set=root --label QAUNTUMOS_V2
+menuentry "QauntumOS Account Preview" {
     linux /boot/vmlinuz rdinit=/init console=tty0 console=ttyS0 loglevel=4
+    initrd /boot/initramfs.cpio.gz
+}
+menuentry "QauntumOS Recovery" {
+    linux /boot/vmlinuz rdinit=/init console=tty0 console=ttyS0 loglevel=4 qauntum.recovery=1
     initrd /boot/initramfs.cpio.gz
 }
 EOF
@@ -70,7 +78,7 @@ mkfs.fat -F 16 -n QAUNTUMEFI "$efi_image" >/dev/null
 mmd -i "$efi_image" ::/EFI ::/EFI/BOOT
 mcopy -i "$efi_image" "$build_dir/BOOTX64.EFI" ::/EFI/BOOT/BOOTX64.EFI
 
-xorriso -as mkisofs -r -J -V QAUNTUMOS_V1 -o "$iso" \
+xorriso -as mkisofs -r -J -V QAUNTUMOS_V2 -o "$iso" \
     -b isolinux/isolinux.bin -c isolinux/boot.cat \
     -no-emul-boot -boot-load-size 4 -boot-info-table \
     -eltorito-alt-boot -e EFI/efiboot.img -no-emul-boot \
