@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
         if (!strcmp(command, "help"))
             puts("help version uname ls [dir] cat <file> echo [text] reboot poweroff exit");
         else if (!strcmp(command, "version"))
-            puts("QauntumOS Version 1 boot prototype");
+            puts("QauntumOS Version 2 development preview");
         else if (!strcmp(command, "uname")) {
             struct utsname info;
             if (uname(&info) == 0) printf("Linux %s %s\n", info.release, info.machine);
