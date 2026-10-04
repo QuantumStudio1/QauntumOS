@@ -29,7 +29,7 @@ proc = subprocess.Popen(
     stdin=subprocess.PIPE,
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
-    env=os.environ.copy(),
+    env={**os.environ, "QAUNTUM_RECOVERY": "1"},
 )
 selector = selectors.DefaultSelector()
 selector.register(proc.stdout, selectors.EVENT_READ)
@@ -53,7 +53,7 @@ try:
             proc.stdin.write(b"version\n")
             proc.stdin.flush()
             stage = 2
-        elif stage == 2 and b"QauntumOS Version 1 boot prototype" in output:
+        elif stage == 2 and b"QauntumOS Version 2 development preview" in output:
             proc.stdin.write(b"poweroff\n")
             proc.stdin.flush()
             stage = 3
@@ -66,7 +66,7 @@ try:
         raise RuntimeError("QauntumOS shell did not start")
     if b"Linux 7.2.8 x86_64" not in output:
         raise RuntimeError("Running kernel version was not confirmed")
-    if b"QauntumOS Version 1 boot prototype" not in output:
+    if b"QauntumOS Version 2 development preview" not in output:
         raise RuntimeError("Recovery shell did not answer the version command")
     if proc.returncode != 0:
         raise RuntimeError(f"QEMU exited with status {proc.returncode}")
