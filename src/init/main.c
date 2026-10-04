@@ -74,6 +74,7 @@ int main(int argc, char **argv) {
         if (mount(data_device, "/var/lib/qauntumos", "ext4",
                   MS_NODEV | MS_NOSUID | MS_NOEXEC, NULL) == 0) {
             (void)mkdir("/var/lib/qauntumos/accounts", 0700);
+            (void)mkdir("/var/lib/qauntumos/games", 0700);
             (void)setenv("QAUNTUM_PERSISTENT", "1", 1);
             log_message("persistent account data mounted");
         } else dprintf(STDERR_FILENO, "qauntum-init: data disk %s: %s\n",
