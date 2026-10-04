@@ -1,8 +1,8 @@
 CC ?= cc
 CFLAGS ?= -O2 -Wall -Wextra -Werror -std=c11
 
-.PHONY: all clean check fetch-kernel initramfs kernel vm test-vm test-session iso test-iso-bios test-iso-uefi
-all: build/qauntum-init build/qauntum-shell build/qauntum-session
+.PHONY: all clean check fetch-kernel initramfs kernel vm test-vm test-session test-library iso test-iso-bios test-iso-uefi
+all: build/qauntum-init build/qauntum-shell build/qauntum-session build/qauntum-library
 
 build/qauntum-init: src/init/main.c
 	mkdir -p build
@@ -12,14 +12,19 @@ build/qauntum-shell: src/shell/main.c
 	mkdir -p build
 	$(CC) $(CFLAGS) -static -o $@ $<
 
-build/qauntum-session: src/session/main.c src/session/auth.c src/session/auth.h src/session/fb.c src/session/fb.h
+build/qauntum-session: src/session/main.c src/session/auth.c src/session/auth.h src/session/fb.c src/session/fb.h src/library/library.c src/library/library.h
 	mkdir -p build
-	$(CC) $(CFLAGS) -o $@ src/session/main.c src/session/auth.c src/session/fb.c -lcrypto
+	$(CC) $(CFLAGS) -o $@ src/session/main.c src/session/auth.c src/session/fb.c src/library/library.c -lcrypto
+
+build/qauntum-library: src/library/main.c src/library/library.c src/library/library.h
+	mkdir -p build
+	$(CC) $(CFLAGS) -o $@ src/library/main.c src/library/library.c
 
 check: all
 	./build/qauntum-init --check
 	./build/qauntum-shell --check
 	./build/qauntum-session --check
+	./build/qauntum-library --check
 
 fetch-kernel:
 	bash tools/fetch-kernel.sh
@@ -38,6 +43,9 @@ test-vm: kernel initramfs
 
 test-session: kernel initramfs
 	python3 tests/session-smoke.py
+
+test-library: all
+	python3 tests/library-smoke.py
 
 iso: kernel initramfs
 	bash tools/build-iso.sh
