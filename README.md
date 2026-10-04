@@ -28,7 +28,7 @@ make iso
 
 To enter the VM interactively, run `make vm`. Set `QAUNTUM_RECOVERY=1` to boot the recovery shell. The unreleased development ISO is `build/QauntumOS-Version-2-dev-x86_64.iso`. Build requirements include GCC with glibc, OpenSSL development files, make, Python 3, curl, xz, GnuPG, bc, flex, bison, Syslinux, GRUB, xorriso, and QEMU x86_64. The kernel source is downloaded and signature checked; generated files stay in the ignored `build/` directory. See [the build guide](docs/build.md).
 
-See [the architecture](docs/architecture.md) and [the roadmap](docs/roadmap.md) for the build sequence.
+See [the interface design](docs/interface.md), [the architecture](docs/architecture.md), and [the roadmap](docs/roadmap.md) for the target experience and build sequence.
 
 ## Source and contribution policy
 
