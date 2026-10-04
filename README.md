@@ -12,7 +12,9 @@ QauntumOS is an experimental gaming-focused Linux distribution for x86_64 PCs an
 
 ## Current state
 
-**Version 1 live ISO prototype:** Linux 7.2.8 boots from an ISO through BIOS or UEFI into QauntumOS's custom init and recovery shell. Both firmware paths passed a VM smoke test. This is a live recovery environment with no installer or persistent storage yet; the graphical interface and update command are also still in development.
+**Current development:** Linux 7.2.8 now boots into first time profile creation, a graphical lock screen, and an early home screen. The lock screen has an on screen keyboard for controller input. Profiles use salted PBKDF2 password hashes. Account data is temporary in live mode; an explicitly attached ext4 data disk preserves it across boots. Both BIOS and UEFI VM tests passed. The published [Version 1 prerelease](https://github.com/QuantumStudio1/QauntumOS/releases/tag/v1.0.0-alpha.1) still contains the earlier recovery shell build.
+
+This is a development preview. The home screen does not launch games yet. Profiles are not separate Linux users, and this build does not provide production login isolation, an installer, or network updates.
 
 ```sh
 make check
@@ -20,10 +22,11 @@ make fetch-kernel
 make kernel
 make initramfs
 make test-vm
+make test-session
 make iso
 ```
 
-To enter the VM interactively, run `make vm`. The recovery shell supports `help`, `version`, `uname`, `ls`, `cat`, `echo`, `reboot`, and `poweroff`. The ISO is `build/QauntumOS-Version-1-x86_64.iso`. Build requirements include GCC with static glibc, make, Python 3, curl, xz, GnuPG, bc, flex, bison, Syslinux, GRUB, xorriso, and QEMU x86_64. The kernel source is downloaded and signature checked; generated files stay in the ignored `build/` directory. See [the build guide](docs/build.md).
+To enter the VM interactively, run `make vm`. Set `QAUNTUM_RECOVERY=1` to boot the recovery shell. The unreleased development ISO is `build/QauntumOS-Version-2-dev-x86_64.iso`. Build requirements include GCC with glibc, OpenSSL development files, make, Python 3, curl, xz, GnuPG, bc, flex, bison, Syslinux, GRUB, xorriso, and QEMU x86_64. The kernel source is downloaded and signature checked; generated files stay in the ignored `build/` directory. See [the build guide](docs/build.md).
 
 See [the architecture](docs/architecture.md) and [the roadmap](docs/roadmap.md) for the build sequence.
 
