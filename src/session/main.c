@@ -22,6 +22,8 @@
 #define NAV_DOWN 0x104
 #define SELECT 0x105
 #define SWITCH_MODE 0x106
+#define FAVORITE 0x107
+#define SEARCH 0x108
 
 static int inputs[MAX_INPUTS];
 static char input_paths[MAX_INPUTS][128];
@@ -74,6 +76,8 @@ static int event_char(unsigned code) {
     if (code == KEY_TAB || code == BTN_TL || code == BTN_TR) return SWITCH_MODE;
     if (code == KEY_ENTER || code == KEY_KPENTER || code == BTN_START) return '\n';
     if (code == BTN_SOUTH) return SELECT;
+    if (code == BTN_NORTH) return FAVORITE;
+    if (code == BTN_WEST) return SEARCH;
     if (code == KEY_BACKSPACE || code == BTN_EAST) return '\b';
     return 0;
 }
@@ -147,7 +151,8 @@ static int read_field(const char *stage, const char *profile, const char *prompt
     buffer[0] = '\0';
     size_t length = 0;
     int virtual_keyboard = strcmp(stage, "FIRST SETUP") == 0 ||
-                           strcmp(stage, "LOCK SCREEN") == 0;
+                           strcmp(stage, "LOCK SCREEN") == 0 ||
+                           strcmp(stage, "SEARCH") == 0;
     int home = strcmp(stage, "HOME") == 0 || strcmp(stage, "DESKTOP") == 0;
     int selected = 0;
     printf("\033[2J\033[H\033[1;36m QAUNTUMOS  /  %s\033[0m\n\n", stage);
@@ -275,6 +280,77 @@ static int select_profile(const char *directory, char *name) {
     }
 }
 
+static int games_menu(const char *profile) {
+    const char *directory = getenv("QAUNTUM_LIBRARY_DIR");
+    if (!directory || !*directory) directory = "/var/lib/qauntumos/games";
+    qa_game games[QA_GAMES_MAX];
+    int visible[QA_GAMES_MAX];
+    char search[64] = "";
+    const char *status = "N ADD GAME  F FAVORITE  I INSTALLED  V FAVORITES";
+    int favorites_only = 0, installed_only = 0, selected = 0;
+    for (;;) {
+        int total = qa_library_load(directory, profile, games, QA_GAMES_MAX);
+        if (total < 0) { perror("load game library"); return -1; }
+        int count = 0;
+        for (int i = 0; i < total; ++i) {
+            if (favorites_only && !games[i].favorite) continue;
+            if (installed_only && access(games[i].executable, X_OK) != 0) continue;
+            if (search[0] && !strcasestr(games[i].title, search)) continue;
+            visible[count++] = i;
+        }
+        if (selected >= count) selected = count ? count - 1 : 0;
+        char filter[65];
+        snprintf(filter, sizeof(filter), "%d/%d  %s%s%s", count ? selected + 1 : 0,
+                 count, favorites_only ? "FAVORITES " : "ALL ",
+                 installed_only ? "INSTALLED " : "", search);
+        printf("\033[2J\033[HQAUNTUMOS / GAMES (%d/%d)\n", count, total);
+        for (int i = 0; i < count; ++i)
+            printf("  %c %s%s\n", i == selected ? '>' : ' ',
+                   games[visible[i]].favorite ? "* " : "  ",
+                   games[visible[i]].title);
+        puts("  A/Enter play  F/Y favorite  S/X search  N add  I installed  V favorites  B/Q back");
+        fflush(stdout);
+        qa_ui_render_library(profile, games, visible, count, selected, filter, status);
+        int key = next_char();
+        if (key < 0) return -1;
+        if (key == NAV_UP || key == NAV_LEFT) {
+            if (count) selected = (selected + count - 1) % count;
+        } else if (key == NAV_DOWN || key == NAV_RIGHT) {
+            if (count) selected = (selected + 1) % count;
+        } else if (key == '\b' || key == 'q' || key == 'Q') return 0;
+        else if (key == 'v' || key == 'V' || key == SWITCH_MODE) {
+            favorites_only = !favorites_only; selected = 0;
+        } else if (key == 'i' || key == 'I') {
+            installed_only = !installed_only; selected = 0;
+        } else if (key == SEARCH || key == 's' || key == 'S') {
+            if (read_field("SEARCH", profile, "TITLE CONTAINS", search,
+                           sizeof(search), 0, "EMPTY SEARCH SHOWS ALL") < 0) return -1;
+            selected = 0;
+        } else if (key == 'n' || key == 'N') {
+            char title[65], executable[512];
+            if (read_field("ADD GAME", profile, "GAME TITLE", title,
+                           sizeof(title), 0, "LOCAL GAME") < 0) return -1;
+            if (read_field("ADD GAME", profile, "ABSOLUTE EXECUTABLE PATH",
+                           executable, sizeof(executable), 0,
+                           "KEYBOARD REQUIRED FOR PATH") < 0) return -1;
+            size_t length = (size_t)total;
+            if (qa_library_add(games, &length, title, executable) < 0 ||
+                qa_library_save(directory, profile, games, length) < 0)
+                status = "COULD NOT ADD GAME OR PATH IS NOT EXECUTABLE";
+            else status = "GAME ADDED";
+        } else if ((key == FAVORITE || key == 'f' || key == 'F') && count) {
+            games[visible[selected]].favorite = !games[visible[selected]].favorite;
+            status = qa_library_save(directory, profile, games, (size_t)total) == 0 ?
+                     "FAVORITE UPDATED" : "COULD NOT SAVE FAVORITE";
+        } else if ((key == SELECT || key == '\n') && count) {
+            status = "STARTING GAME";
+            qa_ui_render_library(profile, games, visible, count, selected, filter, status);
+            int result = qa_library_launch(&games[visible[selected]]);
+            status = result == 0 ? "GAME CLOSED" : "GAME EXITED OR COULD NOT START";
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "--check") == 0) {
         puts("qauntum-session build check OK");
@@ -311,9 +387,7 @@ int main(int argc, char **argv) {
             if (choice[0] == 'l' || choice[0] == 'L') break;
             if (choice[0] == 'p' || choice[0] == 'P') { sync(); reboot(RB_POWER_OFF); }
             if (choice[0] == '1') {
-                char pause[8];
-                if (read_field("GAMES", name, "PRESS ENTER TO RETURN", pause,
-                               sizeof(pause), 0, "YOUR LIBRARY IS EMPTY") < 0) return 1;
+                if (games_menu(name) < 0) return 1;
             } else if (choice[0] == '2') {
                 char pause[8];
                 if (read_field("SETTINGS", name, "PRESS ENTER TO RETURN", pause,

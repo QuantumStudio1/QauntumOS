@@ -235,3 +235,30 @@ void qa_ui_render(const char *stage, const char *profile, const char *prompt,
                                            "KEYBOARD ENTER TO CONTINUE",
               rgb(172, 194, 212));
 }
+
+void qa_ui_render_library(const char *profile, const qa_game *games,
+                          const int *visible, int count, int selected,
+                          const char *filter, const char *status) {
+    qa_ui_render("GAMES", profile, "LIBRARY", "", 0, status, 0, 0);
+    if (!pixels) return;
+    int w = (int)variable.xres, h = (int)variable.yres;
+    int left = w / 12 + 36, top = h / 3 + 95;
+    rectangle(left, top, w - 2 * (w / 12) - 72, 210, rgb(12, 28, 48));
+    if (count == 0) draw_text(left + 14, top + 20, 2, "NO MATCHING GAMES", rgb(205, 224, 238));
+    int start = selected >= 4 ? selected - 3 : 0;
+    for (int row = 0; row < 4 && start + row < count; ++row) {
+        int index = start + row;
+        const qa_game *game = &games[visible[index]];
+        int y = top + 10 + row * 42;
+        rectangle(left + 8, y, w - 2 * (w / 12) - 88, 38,
+                  index == selected ? rgb(55, 189, 185) : rgb(24, 45, 72));
+        draw_text(left + 18, y + 10, 2, game->favorite ? "*" : " ",
+                  rgb(244, 250, 255));
+        draw_text(left + 42, y + 10, 2, game->title,
+                  index == selected ? rgb(5, 29, 42) : rgb(218, 231, 240));
+    }
+    draw_text(left + 8, top + 181, 2, filter, rgb(119, 223, 214));
+    draw_text(w / 12, h - 55, 2,
+              "DPAD MOVE A PLAY Y FAVORITE X SEARCH B BACK",
+              rgb(172, 194, 212));
+}
